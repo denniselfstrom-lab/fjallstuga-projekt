@@ -72,11 +72,11 @@ with flik_sok:
                     st.markdown(svar)
                     st.session_state.messages.append({"role": "assistant", "content": svar})
                 except Exception as e:
-    feltext = str(e)
-    if "429" in feltext or "RESOURCE_EXHAUSTED" in feltext:
-        st.warning("⏳ Sökkvoten är tillfälligt uppnådd (Google API-begränsning). Vänta 1–2 minuter och försök igen.")
-    else:
-        st.error(f"Ett fel uppstod vid sökningen: {e}")
+                    feltext = str(e)
+                    if "429" in feltext or "RESOURCE_EXHAUSTED" in feltext:
+                        st.warning("⏳ Sökkvoten är tillfälligt uppnådd (Google API-begränsning). Vänta 1–2 minuter och försök igen.")
+                    else:
+                        st.error(f"Ett fel uppstod vid sökningen: {e}")
 
 # --- FLIK 2: KARTA ---
 with flik_karta:
