@@ -4,11 +4,10 @@ from google import genai
 from google.genai import types
 
 # Hämta API-nyckeln från GitHub Secrets / miljövariabel
-api_nyckel = os.environ.get("GEMINI_API_KEY")
-if not api_nyckel:
+if not os.environ.get("GEMINI_API_KEY"):
     raise ValueError("Miljövariabeln GEMINI_API_KEY saknas.")
 
-klient = genai.Client(api_key=api_nyckel)
+klient = genai.Client()
 
 sokprompt = (
     "Genomför en sökning på internet efter nyligen tillagda eller lediga fjällstugor "
