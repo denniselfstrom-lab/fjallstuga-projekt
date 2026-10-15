@@ -5,21 +5,19 @@ import pandas as pd
 from google import genai
 from google.genai import types
 
-# Sidkonfiguration
 st.set_page_config(page_title="Fjällstugor Julen 2026", page_icon="🏔️", layout="wide")
 
 st.title("🏔️ Fjällstugor Julen 2026 (Live Webbsökning)")
 st.caption("Agent som söker direkt på internet efter stugor med minst 6 bäddar från 23 december 2026 längs sträckan Romme – Östersund.")
 
-# Initiera API-nyckel
+# Läs in API-nyckel
 api_key = st.secrets.get("GEMINI_API_KEY", None)
 
-def get_gemini_client():
+def hamta_klient():
     if api_key:
         return genai.Client(api_key=api_key)
     return genai.Client()
 
-# Sidomeny
 with st.sidebar:
     if st.button("Nollställ sökning"):
         st.session_state.messages = []
@@ -35,12 +33,10 @@ with flik_sok:
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    # Visa tidigare meddelanden
     for meddelande in st.session_state.messages:
         with st.chat_message(meddelande["role"]):
             st.markdown(meddelande["content"])
 
-    # Hantera ny input
     if prompt := st.chat_input("Skriv din sökning, t.ex. 'Leta efter 6-bäddsstugor i Lofsdalen eller Vemdalen från 23 dec 2026'"):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
@@ -49,9 +45,8 @@ with flik_sok:
         with st.chat_message("assistant"):
             with st.spinner("Söker av internet efter lediga stugor..."):
                 try:
-                    klient = get_gemini_client()
+                    klient = hamta_klient()
                     
-                    # Bygg konversationshistoriken
                     contents = []
                     for msg in st.session_state.messages:
                         roll = "user" if msg["role"] == "user" else "model"
@@ -61,7 +56,7 @@ with flik_sok:
                         "Du är en stugbokningsagent specialiserad på svenska fjällen (Romme till Östersund). "
                         "Använd alltid Google Search för att hitta verifierade och aktuella stugannonser. "
                         "Krav: Minst 6 bäddar och ledigt från 23 december 2026. "
-                        "Svara tydligt med stugnamn, ort, antal bäddar, ungefärligt pris och källänk."
+                        "Svara strukturerat med ort/skidort, stugnamn, antal bäddar, ungefärligt pris och källänk."
                     )
 
                     respons = klient.models.generate_content(
@@ -79,9 +74,9 @@ with flik_sok:
                 except Exception as e:
                     st.error(f"Ett fel uppstod vid sökningen: {e}")
 
-# --- FLIK 2: KARTA & GEOGRAFI ---
+# --- FLIK 2: KARTA ---
 with flik_karta:
-    st.subheader("Skidorter & Referensområden")
+    st.subheader("Skidorter & Geografiskt område")
     
     orter = [
         {"namn": "Romme Alpin", "lat": 60.3957, "lon": 15.3524, "omrade": "Södra Dalarna"},
@@ -105,4 +100,3 @@ with flik_karta:
         ).add_to(m)
 
     st_folium(m, width=900, height=500)
-    st.dataframe(df_orter[["namn", "omrade", "lat", "lon"]], hide_index=True)
