@@ -1,0 +1,38 @@
+name: Daglig Fjällstugebevakning
+
+on:
+  schedule:
+    # Körs varje morgon kl 06:00 UTC (vilket motsvarar kl 07:00 svensk vintertid)
+    - cron: '0 6 * * *'
+  # Tillåter att du startar körningen manuellt via en knapp på GitHub
+  workflow_dispatch:
+
+jobs:
+  sok-stugor:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Hämta källkoden
+        uses: actions/checkout@v4
+
+      - name: Konfigurera Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Installera beroenden
+        run: |
+          python -m pip install --upgrade pip
+          pip install google-genai
+
+      - name: Kör sökagenten
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python daglig_bevakning.py
+
+      - name: Spara och ladda upp rapporten som artefakt
+        uses: actions/upload-artifact@v4
+        with:
+          name: stugrapport-${{ github.job }}
+          path: rapport_*.md
