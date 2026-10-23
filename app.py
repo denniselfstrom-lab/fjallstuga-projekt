@@ -71,45 +71,52 @@ with flik_sok:
     starta_sokning = st.button("🚀 Kör stugsökning via DuckDuckGo nu", type="primary", use_container_width=True)
 
     if starta_sokning:
-        with st.spinner("1/2: Söker på webben via DuckDuckGo..."):
-            webbdata = sok_stugor_webb(valda_orter, extra_krav)
-
         with st.spinner("2/2: Gemini analyserar och sammanställer träffarna..."):
-            try:
-                klient = get_gemini_client()
+            klient = get_gemini_client()
 
-                system_prompt = (
-                    "Du är en stugförmedlingsassistent för de svenska fjällen. "
-                    "Analysera det tillhandahållna sökresultatet från webben. "
-                    "Kriterier: Ledigt från 23 december 2026, minst 6 bäddar. "
-                    "Skapa en sammanställning för varje stuga med: "
-                    "1. Namn på stugan / Område "
-                    "2. Antal bäddar "
-                    "3. Pris eller prisuppskattning "
-                    "4. Direkt klickbar Markdown-länk hämtad ur sökresultatet (t.ex. [Öppna annons](URL)). "
-                    "Om specifika annonser saknas i texten, ge rekommendationer och länkar till ortens bokningssida."
-                )
+            system_prompt = (
+                "Du är en stugförmedlingsassistent för de svenska fjällen. "
+                "Analysera det tillhandahållna sökresultatet från webben. "
+                "Kriterier: Ledigt från 23 december 2026, minst 6 bäddar. "
+                "Skapa en sammanställning för varje stuga med: "
+                "1. Namn på stugan / Område "
+                "2. Antal bäddar "
+                "3. Pris eller prisuppskattning "
+                "4. Direkt klickbar Markdown-länk hämtad ur sökresultatet (t.ex. [Öppna annons](URL)). "
+                "Om specifika annonser saknas i texten, ge rekommendationer och länkar till ortens bokningssida."
+            )
 
-                anfragan = (
-                    f"Valda orter: {valda_orter}\n"
-                    f"Extra krav: {extra_krav}\n\n"
-                    f"Webbdata från DuckDuckGo:\n{webbdata}"
-                )
+            anfragan = (
+                f"Valda orter: {valda_orter}\n"
+                f"Extra krav: {extra_krav}\n\n"
+                f"Webbdata från DuckDuckGo:\n{webbdata}"
+            )
 
-                respons = klient.models.generate_content(
-                    model="gemini-3.8-flash",
-                    contents=anfragan,
-                    config=types.GenerateContentConfig(
-                        system_instruction=system_prompt,
-                        tools=[],
-                        temperature=0.2,
+            # Försök primärt med gemini-3.8-flash, fall tillbaka till gemini-2.5-flash vid 503/överbelastning
+            modeller = ["gemini-3.8-flash", "gemini-2.5-flash"]
+            respons = None
+            senaste_fel = None
+
+            for modell_namn in modeller:
+                try:
+                    respons = klient.models.generate_content(
+                        model=modell_namn,
+                        contents=anfragan,
+                        config=types.GenerateContentConfig(
+                            system_instruction=system_prompt,
+                            tools=[],
+                            temperature=0.2,
+                        )
                     )
-                )
+                    break
+                except Exception as e:
+                    senaste_fel = e
+                    continue
 
+            if respons:
                 st.session_state["senaste_resultat"] = respons.text
-
-            except Exception as e:
-                st.error(f"Ett fel uppstod: {e}")
+            else:
+                st.error(f"Kunde inte nå AI-tjänsten just nu: {senaste_fel}. Vänta en kort stund och klicka igen.")
 
     if "senaste_resultat" in st.session_state:
         st.divider()
