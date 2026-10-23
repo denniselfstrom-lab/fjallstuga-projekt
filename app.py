@@ -24,15 +24,43 @@ def get_gemini_client():
 ORTER = [
     {"namn": "Romme Alpin", "lat": 60.3957, "lon": 15.3524, "omrade": "Södra Dalarna", "info": "Närmast från Mälardalen."},
     {"namn": "Sälen (Lindvallen/Hundfjället)", "lat": 61.1578, "lon": 13.1979, "omrade": "Dalarna", "info": "Stort utbud av stugor."},
-    {"namn": "Idre Fjäll", "lat": 61.8906, "lon": 12.8361, "omrade": "Norra Dalarna", "info": "Snösäkert med v    {"namn": "Idre F    {"namn": "Lofsdalen",    {": 62.115    {"namn": "Idre Fjäll", "lHärjedalen", "info": "Familjevänligt och lugnt."},
-                             nrike/Skalet)", "lat": 6                             nrike/Härjed                      ska                rymli                             nrike/Skalet)", "lat": 6         62                             nrike/Skalet)", "lat": 6                             nrike/Härjed                      ska   t":                             nrike/Skalet)", "", "                   örsta            "},
-                             nrike/Skalet) "l                        "Jämtland",                              nrike/Skalet) "l                        "Jämtland",                              nrike/Skalet) "�                             nrike/Skalet) "l                        "Jämtland",                              nrike/Skalet) "l        j ett eller flera områden, eller sök över hela sträckan Romme–Östersund. Inga anrop görs förrän du trycker på knappen.")
+    {"namn": "Idre Fjäll", "lat": 61.8906, "lon": 12.8361, "omrade": "Norra Dalarna", "info": "Snösäkert med varierad åkning."},
+    {"namn": "Lofsdalen", "lat": 62.1154, "lon": 13.2755, "omrade": "Härjedalen", "info": "Familjevänligt och lugnt."},
+    {"namn": "Vemdalen (Björnrike/Skalet)", "lat": 62.4789, "lon": 13.9744, "omrade": "Härjedalen", "info": "Klassiska fjällbyar med rymliga stugor."},
+    {"namn": "Funäsdalen & Tänndalen", "lat": 62.5447, "lon": 12.5439, "omrade": "Härjedalen", "info": "Rejäla fjäll och fina spår."},
+    {"namn": "Åre & Duved", "lat": 63.3990, "lon": 13.0815, "omrade": "Jämtland", "info": "Sveriges största skidsystem."},
+    {"namn": "Östersund", "lat": 63.1792, "lon": 14.6357, "omrade": "Jämtland", "info": "Stadsmiljö nära fjäll och vinteraktiviteter."}
+]
+df_orter = pd.DataFrame(ORTER)
+
+flik_sok, flik_karta = st.tabs(["🔍 Manuell Sökning", "🗺 Skidorter & Geografi"])
+
+with flik_sok:
+    st.subheader("Starta stugsökning manuellt")
+    st.write("Välj ett eller flera områden, eller sök över hela sträckan Romme–Östersund. Inga anrop görs förrän du trycker på knappen.")
 
     col1, col2 = st.columns([2, 1])
     with col1:
         valda_orter = st.multiselect(
-            "Filtrera på specifika            "Filtrera på specifika            "Filtrera på specifika            "Filtrera på specifika            "Filtrera på specifika            "Filtrera på specifika            "Filtrera på specifika            "Filtrera på specifika            "Filtrera på specifika            "Filtrera på specifika            "Filtrera på specifika            "Filtrera på specifika            "Filtrera på specifikaer            "Filtrera på specifika            "Filtrera på specifika            "Filtrera på specifika            "Filtrera på specifika            "Filtrera på specifika            "Filtrera på specifika            "Filtrera på specifika            "Filtrera på specifika            "Filtrera på specifika            "Filtrera på specifika            "Filtrera på specifika            "Filtrera på specifika            "Filtrera på specifikaer            "Filtr "
-            "Filtrera på speskidort            "          "2. Antal bäddar "
+            "Filtrera på specifika orter (lämna tomt för att söka över alla):",
+            options=df_orter["namn"].tolist(),
+            default=[]
+        )
+    with col2:
+        extra_krav = st.text_input("Övriga önskemål (t.ex. bastu, ski-in/ski-out):", value="")
+
+    starta_sokning = st.button("🚀 Kör komplett stugsökning nu", type="primary", use_container_width=True)
+
+    if starta_sokning:
+        omradestext = ", ".join(valda_orter) if valda_orter else "alla skidorter längs sträckan Romme till Östersund (inklusive Sälen, Idre, Lofsdalen, Vemdalen, Åre)"
+        kravtext = f" Extra önskemål: {extra_krav}." if extra_krav else ""
+
+        prompt = (
+            f"Sök på internet efter lediga fjällstugor för julen 2026 i följande områden: {omradestext}. "
+            f"Krav: Minst 6 bäddar och ledigt från 23 december 2026.{kravtext} "
+            "För varje stuga du hittar ska du ange: "
+            "1. Stugnamn och skidort/område "
+            "2. Antal bäddar "
             "3. Pris/vecka (eller uppskattat pris) "
             "4. Källänk: Skapa en klickbar Markdown-länk till den specifika annonsen (t.ex. [Öppna annons](URL)). "
             "Om specifik annonslänk saknas, länka till ortens officiella stugförmedling."
@@ -51,22 +79,38 @@ ORTER = [
                 respons = klient.models.generate_content(
                     model="gemini-3.8-flash",
                     contents=prompt,
-                    confi                    confi                    confi                    confi ste                    confi                    confi (google_search=types.GoogleSearch())],
+                    config=types.GenerateContentConfig(
+                        system_instruction=system_prompt,
+                        tools=[types.Tool(google_search=types.GoogleSearch())],
                         temperature=0.2,
                     )
                 )
 
                 st.session_state["senaste_resultat"] = respons.text
 
-            except Except on as e:
-                                                                                                   text:
-                    s                    s                    är t                    s          ��2                    s                    s                    är t          elte                    s                    s                    är t                    s  tt t                    s                    s                    är t                    s          ��kni                 if "senaste_resultat" in st.session_state:
+            except Exception as e:
+                feltext = str(e)
+                if "429" in feltext or "RESOURCE_EXHAUSTED" in feltext:
+                    st.warning("⏳ Sökkvoten hos Google API är tillfälligt uppnådd. Vänta 1–2 minuter innan du trycker på knappen igen.")
+                elif "404" in feltext:
+                    st.error("Modellkonfigurationsfel: Kontrollera att modellen är satt till gemini-3.8-flash.")
+                else:
+                    st.error(f"Ett fel uppstod vid sökningen: {e}")
+
+    if "senaste_resultat" in st.session_state:
         st.divider()
         st.subheader("📋 Sökresultat")
-        st.subheader("📋 Sökreate[        st.subheader("📋 Sökreate[        st.subheader("📋 Sökreate[        st.subheader("📋 Sökreate[        st.subheader("📋 Sökreate[        st.subheader("📋 Sökreate[       ca        st.subheader("📋 Sökreate[for         st.subheaderterrows():
+        st.markdown(st.session_state["senaste_resultat"])
+
+with flik_karta:
+    st.subheader("Geografisk översikt: Romme till Östersund")
+    st.write("Klicka på en skidort för att se information.")
+
+    karta = folium.Map(location=[61.9, 14.0], zoom_start=6)
+    for _, rad in df_orter.iterrows():
         folium.Marker(
             location=[rad["lat"], rad["lon"]],
-                                          r>{rad['omrade']}<br><i>{rad['info']}</i>",
+            popup=f"<b>{rad['namn']}</b><br>{rad['omrade']}<br><i>{rad['info']}</i>",
             tooltip=rad["namn"],
             icon=folium.Icon(color="darkblue", icon="snowflake-o", prefix="fa")
         ).add_to(karta)
