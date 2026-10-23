@@ -1,4 +1,3 @@
-cat << 'EOF' > app.py
 import streamlit as st
 import folium
 from streamlit_folium import st_folium
@@ -28,7 +27,7 @@ def sok_stugor_webb(orter_lista, extra):
     med_orter = orter_lista if orter_lista else ["Sälen", "Idre Fjäll", "Lofsdalen", "Vemdalen", "Åre"]
     
     with DDGS() as ddgs:
-        for ort in med_orter[:3]:  # Begränsat till max 3 orter per körning för snabb responstid
+        for ort in med_orter[:3]:
             query = f"hyra stuga {ort} julen 2026 6 bäddar 23 december site:stugknuten.com OR site:blocket.se OR site:skistar.com"
             try:
                 traffar = list(ddgs.text(query, max_results=3))
@@ -102,7 +101,7 @@ with flik_sok:
                     contents=anfragan,
                     config=types.GenerateContentConfig(
                         system_instruction=system_prompt,
-                        tools=[],  # Inga Google Search-verktyg behövs -> Ingen kvot dras
+                        tools=[],
                         temperature=0.2,
                     )
                 )
@@ -130,4 +129,3 @@ with flik_karta:
 
     st_folium(karta, width=950, height=500)
     st.dataframe(df_orter[["namn", "omrade", "info"]], hide_index=True, use_container_width=True)
-EOF
