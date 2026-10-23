@@ -1,9 +1,11 @@
+cat << 'EOF' > app.py
 import streamlit as st
 import folium
 from streamlit_folium import st_folium
 import pandas as pd
 from google import genai
 from google.genai import types
+from duckduckgo_search import DDGS
 
 st.set_page_config(
     page_title="Fjällstugor Julen 2026",
@@ -11,8 +13,8 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🏔️ Fjällstugor Julen 2026 (Manuell Sökagent)")
-st.caption("Agent för stugor längs sträckan Romme – Östersund (minst 6 bäddar, incheckning från 23 december 2026).")
+st.title("🏔️ Fjällstugor Julen 2026 (DDG + Gemini)")
+st.caption("Fristående stugsökning från Romme till Östersund (minst 6 bäddar, från 23 december 2026).")
 
 api_key = st.secrets.get("GEMINI_API_KEY", None)
 
@@ -20,6 +22,24 @@ def get_gemini_client():
     if api_key:
         return genai.Client(api_key=api_key)
     return genai.Client()
+
+def sok_stugor_webb(orter_lista, extra):
+    ddg_resultat = []
+    med_orter = orter_lista if orter_lista else ["Sälen", "Idre Fjäll", "Lofsdalen", "Vemdalen", "Åre"]
+    
+    with DDGS() as ddgs:
+        for ort in med_orter[:3]:  # Begränsat till max 3 orter per körning för snabb responstid
+            query = f"hyra stuga {ort} julen 2026 6 bäddar 23 december site:stugknuten.com OR site:blocket.se OR site:skistar.com"
+            try:
+                traffar = list(ddgs.text(query, max_results=3))
+                for t in traffar:
+                    ddg_resultat.append(f"Ort: {ort}\nTitel: {t.get('title')}\nLänk: {t.get('href')}\nInnehåll: {t.get('body')}\n")
+            except Exception:
+                continue
+
+    if not ddg_resultat:
+        return "Inga direkta träffar hittades via webbsökningen. Använd de officiella bokningsportalerna."
+    return "\n---\n".join(ddg_resultat)
 
 ORTER = [
     {"namn": "Romme Alpin", "lat": 60.3957, "lon": 15.3524, "omrade": "Södra Dalarna", "info": "Närmast från Mälardalen."},
@@ -37,51 +57,52 @@ flik_sok, flik_karta = st.tabs(["🔍 Manuell Sökning", "🗺 Skidorter & Geogr
 
 with flik_sok:
     st.subheader("Starta stugsökning manuellt")
-    st.write("Välj ett eller flera områden, eller sök över hela sträckan Romme–Östersund. Inga anrop görs förrän du trycker på knappen.")
+    st.write("Välj skidorter och starta webbsökningen med ett klick. Inga anrop sker automatiskt.")
 
     col1, col2 = st.columns([2, 1])
     with col1:
         valda_orter = st.multiselect(
-            "Filtrera på specifika orter (lämna tomt för att söka över alla):",
+            "Välj skidorter (lämna tomt för att söka i huvudorterna):",
             options=df_orter["namn"].tolist(),
             default=[]
         )
     with col2:
         extra_krav = st.text_input("Övriga önskemål (t.ex. bastu, ski-in/ski-out):", value="")
 
-    starta_sokning = st.button("🚀 Kör komplett stugsökning nu", type="primary", use_container_width=True)
+    starta_sokning = st.button("🚀 Kör stugsökning via DuckDuckGo nu", type="primary", use_container_width=True)
 
     if starta_sokning:
-        omradestext = ", ".join(valda_orter) if valda_orter else "alla skidorter längs sträckan Romme till Östersund (inklusive Sälen, Idre, Lofsdalen, Vemdalen, Åre)"
-        kravtext = f" Extra önskemål: {extra_krav}." if extra_krav else ""
+        with st.spinner("1/2: Söker på webben via DuckDuckGo..."):
+            webbdata = sok_stugor_webb(valda_orter, extra_krav)
 
-        prompt = (
-            f"Sök på internet efter lediga fjällstugor för julen 2026 i följande områden: {omradestext}. "
-            f"Krav: Minst 6 bäddar och ledigt från 23 december 2026.{kravtext} "
-            "För varje stuga du hittar ska du ange: "
-            "1. Stugnamn och skidort/område "
-            "2. Antal bäddar "
-            "3. Pris/vecka (eller uppskattat pris) "
-            "4. Källänk: Skapa en klickbar Markdown-länk till den specifika annonsen (t.ex. [Öppna annons](URL)). "
-            "Om specifik annonslänk saknas, länka till ortens officiella stugförmedling."
-        )
-
-        with st.spinner("Söker live på webben efter lediga stugor... Detta tar cirka 10–20 sekunder."):
+        with st.spinner("2/2: Gemini analyserar och sammanställer träffarna..."):
             try:
                 klient = get_gemini_client()
 
                 system_prompt = (
-                    "Du är en expert på stuguthyrning i de svenska fjällen. "
-                    "Använd Google Search för att hämta aktuella och verifierade stugor. "
-                    "Formatera alltid svaret strukturerat med tydliga rubriker och klickbara länkar."
+                    "Du är en stugförmedlingsassistent för de svenska fjällen. "
+                    "Analysera det tillhandahållna sökresultatet från webben. "
+                    "Kriterier: Ledigt från 23 december 2026, minst 6 bäddar. "
+                    "Skapa en sammanställning för varje stuga med: "
+                    "1. Namn på stugan / Område "
+                    "2. Antal bäddar "
+                    "3. Pris eller prisuppskattning "
+                    "4. Direkt klickbar Markdown-länk hämtad ur sökresultatet (t.ex. [Öppna annons](URL)). "
+                    "Om specifika annonser saknas i texten, ge rekommendationer och länkar till ortens bokningssida."
+                )
+
+                anfragan = (
+                    f"Valda orter: {valda_orter}\n"
+                    f"Extra krav: {extra_krav}\n\n"
+                    f"Webbdata från DuckDuckGo:\n{webbdata}"
                 )
 
                 respons = klient.models.generate_content(
                     model="gemini-3.8-flash",
-                    contents=prompt,
+                    contents=anfragan,
                     config=types.GenerateContentConfig(
                         system_instruction=system_prompt,
-                        tools=[types.Tool(google_search=types.GoogleSearch())],
+                        tools=[],  # Inga Google Search-verktyg behövs -> Ingen kvot dras
                         temperature=0.2,
                     )
                 )
@@ -89,13 +110,7 @@ with flik_sok:
                 st.session_state["senaste_resultat"] = respons.text
 
             except Exception as e:
-                feltext = str(e)
-                if "429" in feltext or "RESOURCE_EXHAUSTED" in feltext:
-                    st.warning("⏳ Sökkvoten hos Google API är tillfälligt uppnådd. Vänta 1–2 minuter innan du trycker på knappen igen.")
-                elif "404" in feltext:
-                    st.error("Modellkonfigurationsfel: Kontrollera att modellen är satt till gemini-3.8-flash.")
-                else:
-                    st.error(f"Ett fel uppstod vid sökningen: {e}")
+                st.error(f"Ett fel uppstod: {e}")
 
     if "senaste_resultat" in st.session_state:
         st.divider()
@@ -104,8 +119,6 @@ with flik_sok:
 
 with flik_karta:
     st.subheader("Geografisk översikt: Romme till Östersund")
-    st.write("Klicka på en skidort för att se information.")
-
     karta = folium.Map(location=[61.9, 14.0], zoom_start=6)
     for _, rad in df_orter.iterrows():
         folium.Marker(
@@ -117,3 +130,4 @@ with flik_karta:
 
     st_folium(karta, width=950, height=500)
     st.dataframe(df_orter[["namn", "omrade", "info"]], hide_index=True, use_container_width=True)
+EOF
