@@ -15,12 +15,18 @@ st.set_page_config(
 st.title("🏔️ Fjällstugor Julen 2026 (DDG + Gemini)")
 st.caption("Fristående stugsökning från Romme till Östersund (minst 6 bäddar, från 23 december 2026).")
 
+import os
+
 api_key = st.secrets.get("GEMINI_API_KEY", None)
 
 def get_gemini_client():
-    if api_key:
-        return genai.Client(api_key=api_key)
-    return genai.Client()
+    if not api_key:
+        st.error("⚠️ GEMINI_API_KEY saknas i Streamlit Secrets.")
+        st.stop()
+    
+    ren_nyckel = str(api_key).strip().strip('"').strip("'")
+    os.environ["GEMINI_API_KEY"] = ren_nyckel
+    return genai.Client(api_key=ren_nyckel)
 
 def sok_stugor_webb(orter_lista, extra):
     ddg_resultat = []
