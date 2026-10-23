@@ -71,6 +71,9 @@ with flik_sok:
     starta_sokning = st.button("🚀 Kör stugsökning via DuckDuckGo nu", type="primary", use_container_width=True)
 
     if starta_sokning:
+        with st.spinner("1/2: Söker på webben via DuckDuckGo..."):
+            webbdata = sok_stugor_webb(valda_orter, extra_krav)
+
         with st.spinner("2/2: Gemini analyserar och sammanställer träffarna..."):
             klient = get_gemini_client()
 
@@ -92,7 +95,6 @@ with flik_sok:
                 f"Webbdata från DuckDuckGo:\n{webbdata}"
             )
 
-            # Försök primärt med gemini-3.8-flash, fall tillbaka till gemini-2.5-flash vid 503/överbelastning
             modeller = ["gemini-3.8-flash", "gemini-2.5-flash"]
             respons = None
             senaste_fel = None
