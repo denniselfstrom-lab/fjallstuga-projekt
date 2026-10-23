@@ -1,0 +1,6 @@
+.streamlit/secrets.toml
+.DS_Store
+echo "minmiljo/" >> .gitignore
+git rm -r --cached minmiljo
+git commit -m "Exkludera virtuell miljo fran Git"
+git push origin main
